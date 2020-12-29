@@ -11,7 +11,7 @@ class server:
 
     def __init__(self, host="172.1.0"):
         self.serverPort = 12000
-        self.serverPortGame = 14000
+        self.serverPortGame = 6666
         self.serverSocket = socket(AF_INET, SOCK_DGRAM)
         self.teams = {}
         self.group1 = {}
@@ -33,7 +33,7 @@ class server:
         self.serverSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         ip = self.serverSocket.getsockname()[0]  # TODO bind ip address
         msg = 'Server started,listening on IP address ' + str(ip)
-        message = struct.pack('IbH', 0xfeedbeef, 0x2, self.serverPortGame)
+        message = struct.pack('IBH', 0xfeedbeef, 0x2, self.serverPortGame)
         count = 0
         while not self.stop:
             self.serverSocket.sendto(message, ('<broadcast>', 13117))

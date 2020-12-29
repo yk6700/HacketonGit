@@ -6,7 +6,7 @@ import getch as msvcrt
 import struct
 import sys, termios, atexit
 from select import select
-from Hacketon_VC.getch_kbhit import getch_kbhit
+from getch_kbhit import getch_kbhit
 
 
 class client:
@@ -15,7 +15,7 @@ class client:
         self.clientSocket = socket(AF_INET, SOCK_STREAM)
         self.stop_play = False
         self.gb = getch_kbhit()
-        atexit.register(self.gb.set_normal_term())
+        atexit.register(self.gb.set_normal_term)
         self.gb.set_curses_term()
 
     def broadcast_recive(self):
@@ -27,11 +27,14 @@ class client:
         print(msg)
         b_m = True
         while b_m:
-            m_pack, addr = s.recvfrom(1024)
-            m = struct.unpack('IbH', m_pack)
-            cookie = hex(m[0])
-            m_type = hex(m[1])
-            server_port = m[2]
+            m_pack, addr = s.recvfrom(4096)
+            try:
+                (cookie, m_type, server_port) = struct.unpack('IBH', m_pack)
+            except:
+                continue
+            cookie = hex(cookie)
+            m_type = hex(m_type)
+            
             if cookie == hex(0xfeedbeef) and m_type == hex(0x2):
                 b_m = False
         self.connect_to_server(server_port, addr[0])
@@ -78,7 +81,7 @@ class client:
 
         while not self.stop_play:
             if self.gb.kbhit():
-                self.clientSocket.sendall(self.gb.getch())
+                self.clientSocket.sendall((self.gb.getch()).encode())
         self.clientSocket.settimeout(5)
         try:
             message = self.clientSocket.recv(2048)

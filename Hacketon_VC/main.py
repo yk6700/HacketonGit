@@ -2,10 +2,9 @@ from server import server
 from client import client
 import threading
 import time
-from msvcrt import *
 
 
-s1 = server('127.0.0.1')
+s1 = server()
 
 class myThread1(threading.Thread):
     def __init__(self, threadID, name, counter):
