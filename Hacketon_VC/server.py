@@ -3,26 +3,13 @@ import time
 from _thread import *
 from threading import Timer
 import threading
-from struct import *
-
-
-class player_thread(threading.Thread):
-    def __init__(self, threadID, name, counter, connection_socket, group):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.name = name
-        self.counter = counter
-        self.connection = connection_socket
-        self.group = group
-
-    def run(self):
-        server.threaded_client(self.connection, self.group)
+import struct
 
 
 class server:
     stop = False
 
-    def __init__(self):
+    def __init__(self, host="172.1.0"):
         self.serverPort = 12000
         self.serverPortGame = 14000
         self.serverSocket = socket(AF_INET, SOCK_DGRAM)
@@ -32,17 +19,21 @@ class server:
         self.group1_score = 0
         self.group2_score = 0
         self.stop_play = False
+        if host == '127.0.0.1':
+            self.ip_host = host
+        else:
+            self.ip_host = host + ".69"
 
     def wating_for_clients(self):
         """
         docstring
         """
-        self.serverSocket.bind(('127.0.0.1', self.serverPort))  # TODO bind ip address
+        self.serverSocket.bind((self.ip_host, self.serverPort))  # TODO bind ip address
         self.serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
         self.serverSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        ip = self.serverSocket.getsockname()[0]
+        ip = self.serverSocket.getsockname()[0]  # TODO bind ip address
         msg = 'Server started,listening on IP address ' + str(ip)
-        message = bytearray('0xfeedbeef0x214000', 'utf-8')
+        message = struct.pack('IbH', 0xfeedbeef, 0x2, self.serverPortGame)
         count = 0
         while not self.stop:
             self.serverSocket.sendto(message, ('<broadcast>', 13117))
@@ -57,16 +48,18 @@ class server:
 
     def connecting_clients(self):
         serverSocket = socket(AF_INET, SOCK_STREAM)
-        serverSocket.bind(('', self.serverPortGame))
+        serverSocket.bind((self.ip_host, self.serverPortGame))
         serverSocket.listen(1)
         while 1:
             connectionSocket, addr = serverSocket.accept()
             b = True
             team_name_str = ''
-            connectionSocket.settimeout(5)
+            connectionSocket.settimeout(3)
             try:
                 while b:
                     team_name = connectionSocket.recv(2048)
+                    if not team_name:
+                        continue
                     team_name_str += str(team_name.decode())
                     if team_name_str[-1] == '\n':
                         b = False
@@ -75,8 +68,6 @@ class server:
             except timeout:
                 connectionSocket.close()
                 continue
-            #connectionSocket.send(str("got it " + str(team_name.decode('utf-8'))).encode('utf-8'))
-            # connectionSocket.close()
 
     def welcome_message(self):
         message = "Welcome to Keyboard Spamming Battle Royale.\n"
@@ -111,18 +102,19 @@ class server:
 
     def threaded_client(self, connection_socket, group):
         w_message = self.welcome_message()
-        connection_socket.send(w_message.encode('utf-8'))
+        connection_socket.send(w_message.encode())
         timer = Timer(10, self.time_out)
         timer.start()
+        connection_socket.settimeout(11)
         while not self.stop_play:
             try:
                 key_press = connection_socket.recv(1024)
                 if not key_press:
                     return
-                key_str = str(key_press.decode('utf-8'))
+                key_str = str(key_press.decode())
                 if key_str == 'stop':
                     continue
-                print(key_press.decode('utf-8'))
+                print(key_press.decode())
                 if group == 1:
                     self.group1_score += 1
                     print("score1 :" + str(self.group1_score))
@@ -132,8 +124,9 @@ class server:
             except ConnectionResetError:
                 ip = str(self.serverSocket.getsockname()[0])
                 connection_socket.connect((ip, self.serverPortGame))
+        connection_socket.settimeout(None)
         end_message = self.end_game_message()
-        connection_socket.send(end_message.encode('utf-8'))
+        connection_socket.send(end_message.encode())
         # connection_socket.close()
 
     def game_mode(self):
@@ -165,7 +158,6 @@ class server:
             t1.start()
         for t in threads:
             t.join()
-        print("finish")
         self.teams = {}
         self.group1 = {}
         self.group2 = {}

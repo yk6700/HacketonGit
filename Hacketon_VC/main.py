@@ -2,12 +2,10 @@ from server import server
 from client import client
 import threading
 import time
-import keyboard
-from tkinter import *
+from msvcrt import *
 
 
-exitFlag = 0
-s1 = server()
+s1 = server('127.0.0.1')
 
 class myThread1(threading.Thread):
     def __init__(self, threadID, name, counter):
