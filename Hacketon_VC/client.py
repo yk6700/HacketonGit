@@ -2,8 +2,11 @@ import time
 from socket import *
 from threading import Timer
 from threading import Thread
-import msvcrt
+import getch as msvcrt
 import struct
+import sys, termios, atexit
+from select import select
+from Hacketon_VC.getch_kbhit import getch_kbhit
 
 
 class client:
@@ -11,6 +14,9 @@ class client:
         self.team_name = team_name
         self.clientSocket = socket(AF_INET, SOCK_STREAM)
         self.stop_play = False
+        self.gb = getch_kbhit()
+        atexit.register(self.gb.set_normal_term())
+        self.gb.set_curses_term()
 
     def broadcast_recive(self):
         s = socket(AF_INET, SOCK_DGRAM)
@@ -71,8 +77,8 @@ class client:
         timer.start()
 
         while not self.stop_play:
-            if msvcrt.kbhit():
-                self.clientSocket.sendall(msvcrt.getch())
+            if self.gb.kbhit():
+                self.clientSocket.sendall(self.gb.getch())
         self.clientSocket.settimeout(5)
         try:
             message = self.clientSocket.recv(2048)

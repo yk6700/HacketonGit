@@ -10,24 +10,24 @@ class getch_kbhit:
     new_term[3] = (new_term[3] & ~termios.ICANON & ~termios.ECHO)
 
     # switch to normal terminal
-    def set_normal_term():
+    def set_normal_term(self):
         termios.tcsetattr(fd, termios.TCSAFLUSH, old_term)
 
     # switch to unbuffered terminal
-    def set_curses_term():
+    def set_curses_term(self):
         termios.tcsetattr(fd, termios.TCSAFLUSH, new_term)
 
-    def putch(ch):
+    def putch(self, ch):
         sys.stdout.write(ch)
 
-    def getch():
+    def getch(self):
         return sys.stdin.read(1)
 
-    def getche():
+    def getche(self):
         ch = getch()
         putch(ch)
         return ch
 
-    def kbhit():
+    def kbhit(self):
         dr,dw,de = select([sys.stdin], [], [], 0)
-        return dr <> []
+        return dr != []
