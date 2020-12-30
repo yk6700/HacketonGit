@@ -58,13 +58,16 @@ class client:
 
     def time_out(self):
         self.stop_play = True
-        self.clientSocket.send("stop".encode())
+        try:
+            self.clientSocket.send("stop".encode())
+        except:
+            a = 1
 
-    def key_press_and_send(self):
+    """def key_press_and_send(self):
         key_press = msvcrt.getch()
         #key_press = keyboard.read_key(True)
         print("sent")
-        self.clientSocket.send(key_press.encode())
+        self.clientSocket.send(key_press.encode())"""
 
     def game_mode(self):
         self.clientSocket.settimeout(13)

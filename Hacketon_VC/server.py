@@ -8,6 +8,7 @@ import struct
 
 class server:
     stop = False
+    SERVER_TCP_PORT = 6666
 
     def __init__(self, host="172.1.0"):
         self.serverPort = 12000
@@ -16,6 +17,9 @@ class server:
         self.teams = {}
         self.group1 = {}
         self.group2 = {}
+        self.team_scores = {}
+        self.best_team = ['', 0]
+        self.keys_count = {}
         self.group1_score = 0
         self.group2_score = 0
         self.stop_play = False
@@ -39,7 +43,7 @@ class server:
         self.serverSocket.settimeout(1)
         ip = self.serverSocket.getsockname()[0]  # TODO bind ip address
         msg = 'Server started,listening on IP address ' + str(self.ip_host)
-        message = struct.pack('IBH', 0xfeedbeef, 0x2, self.serverPortGame)
+        message = struct.pack('IBH', 0xfeedbeef, 0x2, self.SERVER_TCP_PORT)
         count = 0
         while not self.stop:
             self.serverSocket.sendto(message, ('<broadcast>', 13124)) # TODO change to 13117
@@ -55,7 +59,9 @@ class server:
     def connecting_clients(self):
         serverSocket = socket(AF_INET, SOCK_STREAM)
         try:
-            serverSocket.bind(('', self.serverPortGame))
+            serverSocket.bind(('', 0))
+            (TCP_addr, self.SERVER_TCP_PORT) = serverSocket.getsockname()
+            #serverSocket.bind(('', self.serverPortGame))
         except:
             serverSocket.close()
             self.connecting_clients()
@@ -77,6 +83,7 @@ class server:
                         b = False
                 connectionSocket.settimeout(None)
                 self.teams[connectionSocket] = team_name_str
+                self.team_scores[(connectionSocket,team_name_str)] = 0
             except timeout:
                 connectionSocket.close()
                 continue
@@ -85,13 +92,31 @@ class server:
         message = "Welcome to Keyboard Spamming Battle Royale.\n"
         message += "Group 1:\n==\n"
         for team1 in self.group1.keys():
-            message += str(self.group1[team1]) + '\n'
+            message += str(self.group1[team1])
         message += "Group 2:\n==\n"
         for team2 in self.group2.keys():
-            message += str(self.group2[team2]) + '\n'
+            message += str(self.group2[team2])
         message += "Start pressing keys on your keyboard as fast as you can!!"
         return message
 
+    def best_game_team(self):
+        best_t = '\n'
+        best_s = 0
+        for team in self.team_scores.keys():
+            if self.team_scores[team] >= best_s:
+                best_s = self.team_scores[team]
+                best_t = team[1]
+        return best_t, best_s
+    
+    def max_key(self):
+        best_k = ''
+        best_s = 0
+        for key in self.keys_count.keys():
+            if self.keys_count[key] >= best_s:
+                best_s = self.keys_count[key]
+                best_k = key
+        return best_k, best_s
+    
     def end_game_message(self):
         s1 = self.group1_score
         s2 = self.group2_score
@@ -101,13 +126,26 @@ class server:
             message += "Group 1 wins!\n\n"
             message += "Congratulations to the winners:\n==\n"
             for team in self.group1.keys():
-                message += self.group1[team] + '\n'
+                message += str(self.group1[team])
         else:
             message += "Group 2 wins!\n\n"
             message += "Congratulations to the winners:\n==\n"
             for team in self.group2.keys():
-                message += self.group2[team] + '\n'
+                message += str(self.group2[team])
+        message += '\n'
+        best_t, best_s = self.best_game_team()
+        tmp = "The best team that played this round with a score of " + str(best_s) + " is: " + str(best_t) 
+        message += tmp
+        if self.best_team[1] <= best_s:
+            self.best_team[1] = best_s
+            self.best_team[0] = best_t
+        tmp = "The best team in history that played this gamee with a best score of " + str(self.best_team[1]) + " is : " + str(self.best_team[0]) 
+        message += tmp
+        best_k, best_s = self.max_key()
+        tmp = "The most common Key that was pressed this round with a total amount of " + str(best_s) + " is: " + str(best_k) 
+        message += tmp + '\n'
         return message
+    
 
     def time_out(self):
         self.stop_play = True
@@ -127,6 +165,11 @@ class server:
                 if key_str == 'stop':
                     continue
                 print(key_press.decode())
+                self.team_scores[(connection_socket, self.teams[connection_socket])] += 1
+                if key_str not in self.keys_count.keys():
+                    self.keys_count[key_str] = 1
+                else:
+                    self.keys_count[key_str] += 1
                 if group == 1:
                     self.group1_score += 1
                     print("score1 :" + str(self.group1_score))
@@ -161,6 +204,7 @@ class server:
                 assigned_teams[team] = 2
                 group_chose = 1
         threads = []
+        print("exitttttt")
         for team in assigned_teams.keys():
             #start_new_thread(self.threaded_client, (team, assigned_teams[team],))
             t1 = threading.Thread(None,self.threaded_client,None,(team, assigned_teams[team]))
@@ -173,6 +217,8 @@ class server:
         self.group2 = {}
         self.group1_score = 0
         self.group2_score = 0
+        self.keys_count = {}
+        self.team_scores = {}
         self.stop = False
         self.stop_play = False
         self.serverSocket.close()
