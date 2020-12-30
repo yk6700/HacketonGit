@@ -28,15 +28,21 @@ class server:
         """
         docstring
         """
-        self.serverSocket.bind((self.ip_host, self.serverPort))  # TODO bind ip address
-        self.serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+        #self.serverSocket = socket(AF_INET, SOCK_DGRAM)
         self.serverSocket.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
+        self.serverSocket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        try:
+            self.serverSocket.bind(('', 13124))  # TODO bind ip address
+        except:
+            self.wating_for_clients()
+        
+        self.serverSocket.settimeout(1)
         ip = self.serverSocket.getsockname()[0]  # TODO bind ip address
-        msg = 'Server started,listening on IP address ' + str(ip)
+        msg = 'Server started,listening on IP address ' + str(self.ip_host)
         message = struct.pack('IBH', 0xfeedbeef, 0x2, self.serverPortGame)
         count = 0
         while not self.stop:
-            self.serverSocket.sendto(message, ('<broadcast>', 13117))
+            self.serverSocket.sendto(message, ('<broadcast>', 13124)) # TODO change to 13117
             print(msg)
             time.sleep(1)
             count += 1
@@ -48,10 +54,16 @@ class server:
 
     def connecting_clients(self):
         serverSocket = socket(AF_INET, SOCK_STREAM)
-        serverSocket.bind((self.ip_host, self.serverPortGame))
+        try:
+            serverSocket.bind(('', self.serverPortGame))
+        except:
+            serverSocket.close()
+            self.connecting_clients()
         serverSocket.listen(1)
         while 1:
             connectionSocket, addr = serverSocket.accept()
+            if addr:
+                print(addr)
             b = True
             team_name_str = ''
             connectionSocket.settimeout(3)
@@ -142,12 +154,10 @@ class server:
         for team in self.teams.keys():
             if group_chose == 1:
                 self.group1[team] = self.teams[team]
-                # self.group1[team] = team
                 assigned_teams[team] = 1
                 group_chose = 2
             else:
                 self.group2[team] = self.teams[team]
-                # self.group2[team] = team
                 assigned_teams[team] = 2
                 group_chose = 1
         threads = []

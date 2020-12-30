@@ -10,7 +10,7 @@ from getch_kbhit import getch_kbhit
 
 
 class client:
-    def __init__(self, team_name="IsYk\n"):
+    def __init__(self, team_name="The Tapandegan\n"):
         self.team_name = team_name
         self.clientSocket = socket(AF_INET, SOCK_STREAM)
         self.stop_play = False
@@ -21,13 +21,17 @@ class client:
     def broadcast_recive(self):
         s = socket(AF_INET, SOCK_DGRAM)
         s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
-        s.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-        s.bind(('', 13117))
+        s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+        try:
+            s.bind(('', 13124))  # TODO change to 13117
+        except:
+            self.broadcast_recive()
         msg = "Client started, listening for offer requests..."
         print(msg)
         b_m = True
         while b_m:
             m_pack, addr = s.recvfrom(4096)
+            print(addr)
             try:
                 (cookie, m_type, server_port) = struct.unpack('IBH', m_pack)
             except:
@@ -43,7 +47,10 @@ class client:
         # serverName = 'localhost'
         serverName = server_addr
         serverPort = int(server_port)
-        self.clientSocket.connect((serverName, serverPort))
+        try:
+            self.clientSocket.connect((serverName, serverPort))
+        except:
+            self.broadcast_recive()
         self.clientSocket.send(self.team_name.encode())
         m = "Received offer from " + str(serverName) + ", attempting to connect..."
         print(m)
@@ -81,7 +88,14 @@ class client:
 
         while not self.stop_play:
             if self.gb.kbhit():
-                self.clientSocket.sendall((self.gb.getch()).encode())
+                try:
+                    self.clientSocket.send((self.gb.getch()).encode())
+                except BrokenPipeError:
+                    timer.cancel()
+                    self.clientSocket.close()
+                    self.clientSocket = socket(AF_INET, SOCK_STREAM)
+                    self.stop_play = False
+                    self.broadcast_recive()
         self.clientSocket.settimeout(5)
         try:
             message = self.clientSocket.recv(2048)
