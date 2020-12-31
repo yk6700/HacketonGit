@@ -2,6 +2,7 @@ import time
 from socket import *
 from threading import Timer
 from threading import Thread
+import threading
 import getch as msvcrt
 import struct
 import sys, termios, atexit
@@ -10,6 +11,17 @@ from getch_kbhit import getch_kbhit
 
 
 class client:
+
+    Black = '\u001b[30m'
+    Red =  '\u001b[31m'
+    Green = '\u001b[32m'
+    Yellow = '\u001b[33m'
+    Blue = '\u001b[34m'
+    Magenta = '\u001b[35m'
+    Cyan = '\u001b[36m'
+    White = '\u001b[37m'
+    Reset = '\u001b[0m'
+
     def __init__(self, team_name="The Tapandegan\n"):
         self.team_name = team_name
         self.clientSocket = socket(AF_INET, SOCK_STREAM)
@@ -18,12 +30,12 @@ class client:
         atexit.register(self.gb.set_normal_term)
         self.gb.set_curses_term()
 
-    def broadcast_recive(self):
+    def broadcast_recive(self): # udp reciver
         s = socket(AF_INET, SOCK_DGRAM)
         s.setsockopt(SOL_SOCKET, SO_BROADCAST, 1)
         s.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
         try:
-            s.bind(('', 13124))  # TODO change to 13117
+            s.bind(('', 13117))  # TODO change to 13117
         except:
             self.broadcast_recive()
         msg = "Client started, listening for offer requests..."
@@ -39,22 +51,21 @@ class client:
             cookie = hex(cookie)
             m_type = hex(m_type)
             
-            if cookie == hex(0xfeedbeef) and m_type == hex(0x2):
+            if cookie == hex(0xfeedbeef) and m_type == hex(0x2): # check for right message
                 b_m = False
-        self.connect_to_server(server_port, addr[0])
+        self.connect_to_server(server_port, addr[0]) # connectin to tcp server
 
-    def connect_to_server(self, server_port, server_addr):
-        # serverName = 'localhost'
+    def connect_to_server(self, server_port, server_addr): # tcp conneting
         serverName = server_addr
         serverPort = int(server_port)
         try:
-            self.clientSocket.connect((serverName, serverPort))
+            self.clientSocket.connect((serverName, serverPort)) # trying to connect to server
         except:
             self.broadcast_recive()
         self.clientSocket.send(self.team_name.encode())
-        m = "Received offer from " + str(serverName) + ", attempting to connect..."
+        m = self.Reset + "Received offer from " + self.Magenta + str(serverName) +self.Reset + ", attempting to connect..."
         print(m)
-        self.game_mode()
+        self.game_mode() #starting game
 
     def time_out(self):
         self.stop_play = True
@@ -63,22 +74,17 @@ class client:
         except:
             a = 1
 
-    """def key_press_and_send(self):
-        key_press = msvcrt.getch()
-        #key_press = keyboard.read_key(True)
-        print("sent")
-        self.clientSocket.send(key_press.encode())"""
 
     def game_mode(self):
         self.clientSocket.settimeout(13)
         try:
-            message = self.clientSocket.recv(2048)
+            message = self.clientSocket.recv(2048) # wating for message from server to start the game
             if not message:
                 self.clientSocket.close()
                 self.clientSocket = socket(AF_INET, SOCK_STREAM)
                 self.stop_play = False
                 self.broadcast_recive()
-        except timeout:
+        except:
             self.clientSocket.close()
             self.clientSocket = socket(AF_INET, SOCK_STREAM)
             self.stop_play = False
@@ -87,12 +93,13 @@ class client:
         self.clientSocket.settimeout(None)
         print(message.decode())
         timer = Timer(10, self.time_out)
-        timer.start()
+        timer.start() # starting the timer for 10 sec game
 
-        while not self.stop_play:
+        while not self.stop_play: #game itself
+            time.sleep(0.001)
             if self.gb.kbhit():
                 try:
-                    self.clientSocket.send((self.gb.getch()).encode())
+                    self.clientSocket.send((self.gb.getch()).encode()) # detecting and sending key press
                 except BrokenPipeError:
                     timer.cancel()
                     self.clientSocket.close()
@@ -114,5 +121,23 @@ class client:
         self.clientSocket.close()
         self.clientSocket = socket(AF_INET, SOCK_STREAM)
         self.stop_play = False
-        self.broadcast_recive()
+        self.broadcast_recive() #end game back to brodcast
 
+
+
+
+
+class myThread2(threading.Thread):
+    def __init__(self, threadID, name, counter, team="The Tapandegan\n"):
+        threading.Thread.__init__(self)
+        self.threadID = threadID
+        self.name = name
+        self.counter = counter
+        self.team = team
+
+    def run(self):
+        c1 = client(self.team)
+        c1.broadcast_recive()
+
+thread2 = myThread2(2, "Thread-2", 2)
+thread2.start()
